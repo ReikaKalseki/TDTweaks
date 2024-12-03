@@ -41,10 +41,7 @@ namespace ReikaKalseki.TDTweaks
     	return config;
     }
 
-    public override ModRegistrationData Register()
-    {
-        ModRegistrationData registrationData = new ModRegistrationData();      
-                
+    protected override void loadMod(ModRegistrationData registrationData) {
         config.load();
         
         runHarmony();
@@ -70,8 +67,6 @@ namespace ReikaKalseki.TDTweaks
         
     	foreach (TD_WaspMob.eWaspType type in Enum.GetValues(typeof(TD_WaspMob.eWaspType)))
         	loadHealthCurve(type, doc.DocumentElement);
-        
-        return registrationData;
     }
     
     private void generateHealthDefaults(XmlDocument doc) {
