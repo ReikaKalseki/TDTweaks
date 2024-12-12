@@ -15,8 +15,7 @@ namespace ReikaKalseki.TDTweaks
 		public static readonly int MIN_THREAT = 0;
 		public static readonly int MAX_THREAT = 20000;
 	
-		private readonly SortedDictionary<int, int> curvePoints = new SortedDictionary<int, int>();
-		private readonly List<int> keys = new List<int>();
+		private readonly Interpolation curve = new Interpolation();
 		
 		public AttackCurve(int zeroValue, int maxValue) {
 			addPoint(MIN_THREAT, zeroValue);
@@ -29,22 +28,12 @@ namespace ReikaKalseki.TDTweaks
 			else if (at > MAX_THREAT)
 				throw new Exception("Threat values cannot exceeed "+MAX_THREAT);
 			FUtil.log("Adding curve point "+at+", "+value);
-			curvePoints[at] = value;
-			if (!keys.Contains(at))
-				keys.Add(at);
-			keys.Sort();
+			curve.addPoint(at, value);
 			return this;
 		}
 		
-		public float getValue(int threat) { //no need to check if threat < keys[0] since keys[0] = 0
-			int idx = keys.BinarySearch(threat);
-			if (idx >= 0)
-				return curvePoints[threat];
-			int prev = ~idx-1;
-			int next = prev+1;
-			int y1 = curvePoints[prev];
-			int y2 = curvePoints[next];
-			return Mathf.Lerp(y1, y2, (threat-prev)/(float)(next-prev));
+		public float getValue(int threat) {
+			return curve.getValue(threat);
 		}
 		
 		public void load(string file) {
@@ -62,14 +51,13 @@ namespace ReikaKalseki.TDTweaks
 		}
 		
 		public void load(XmlElement from) {
-			curvePoints.Clear();
-			keys.Clear();
+			curve.clear();
 			foreach (XmlNode e in from.ChildNodes) {
 				if (!(e is XmlElement))
 					continue;
 				if (e.Name.ToLowerInvariant() == "point") {
-					int threat = int.Parse(e.Attributes["threat"].Value);
-					int value = int.Parse(e.Attributes["value"].Value);
+					int threat = (int)float.Parse(e.Attributes["threat"].Value);
+					int value = (int)float.Parse(e.Attributes["value"].Value);
 					addPoint(threat, value);
 				}
 			}
@@ -88,15 +76,13 @@ namespace ReikaKalseki.TDTweaks
 		}
 		
 		public void save(XmlElement to) {
-			foreach (KeyValuePair<int, int> kvp in curvePoints) {
-				createNode(to.OwnerDocument, to, kvp);
-			}
+			curve.iterate(kvp => createNode(to.OwnerDocument, to, kvp));
 		}
 			
-		private void createNode(XmlDocument doc, XmlElement root, KeyValuePair<int, int> kvp) {
+		private void createNode(XmlDocument doc, XmlElement root, KeyValuePair<float, float> kvp) {
 			XmlElement node = doc.CreateElement("Point");
-			node.SetAttribute("threat", kvp.Key.ToString());
-			node.SetAttribute("value", kvp.Value.ToString());
+			node.SetAttribute("threat", kvp.Key.ToString("0"));
+			node.SetAttribute("value", kvp.Value.ToString("0"));
 			root.AppendChild(node);
 		}
 	}
